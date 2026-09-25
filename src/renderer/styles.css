@@ -1,0 +1,110 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1f1f1f;
+  --muted: #6b6b6b;
+  --field: #f0f0f0;
+  --field-focus: #ffffff;
+  --ring: #3b82f6;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1f1f1f;
+    --fg: #f2f2f2;
+    --muted: #9a9a9a;
+    --field: #2c2c2c;
+    --field-focus: #161616;
+    --ring: #60a5fa;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  overflow: hidden;
+}
+
+#toolbar {
+  height: var(--toolbar-height);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  /* The empty parts of the toolbar move the window, like a title bar. */
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+/* Leave room for the window buttons the OS draws over our toolbar. */
+[data-platform='darwin'] #toolbar {
+  padding-left: 80px;
+}
+[data-platform='win32'] #toolbar {
+  padding-right: 150px;
+}
+
+#field {
+  position: relative;
+  flex: 1;
+  max-width: 720px;
+  margin: 0 auto;
+  -webkit-app-region: no-drag;
+}
+
+#address {
+  width: 100%;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--field);
+  color: var(--fg);
+  font: inherit;
+  text-align: center;
+  outline: none;
+}
+
+#address::placeholder {
+  color: var(--muted);
+}
+
+#address:focus {
+  background: var(--field-focus);
+  border-color: var(--ring);
+  text-align: left;
+}
+
+#progress {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--ring);
+  transform-origin: left;
+  transform: scaleX(0);
+  opacity: 0;
+}
+
+.loading #progress {
+  opacity: 1;
+  animation: progress 2s ease-out forwards;
+}
+
+@keyframes progress {
+  from {
+    transform: scaleX(0.05);
+  }
+  to {
+    transform: scaleX(0.85);
+  }
+}

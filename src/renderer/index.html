@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    />
+    <title>Browser</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header id="toolbar">
+      <div id="field">
+        <input
+          id="address"
+          type="text"
+          placeholder="Search or enter address"
+          spellcheck="false"
+          autocomplete="off"
+          aria-label="Search or enter address"
+        />
+        <div id="progress" aria-hidden="true"></div>
+      </div>
+    </header>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
