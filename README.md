@@ -35,6 +35,18 @@ npm run dev
 The project lives in your home folder, so an editor running outside the
 toolbox can open it. Run `npm` commands inside the toolbox.
 
+If no window appears and the terminal says `error while loading shared
+libraries`, the toolbox is missing libraries Chromium needs. Inside the
+toolbox:
+
+```sh
+sudo dnf install -y nss atk at-spi2-atk cups-libs gtk3 libdrm mesa-libgbm \
+  alsa-lib libxkbcommon libXcomposite libXdamage libXrandr libXScrnSaver pango
+```
+
+`http://localhost:5173` is only the dev server feeding the toolbar UI to the
+app window; opening it in a normal browser won't give you a working browser.
+
 If Toolbx isn't available, install Node into your home folder instead with
 [fnm](https://github.com/Schniz/fnm) (`fnm install --lts`). Nothing in this
 project needs root.
