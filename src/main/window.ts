@@ -26,6 +26,7 @@ import { join } from 'node:path';
 import { Channels, type WindowState } from '../shared/ipc';
 import { computeLayout, TAB_STRIP_HEIGHT, type AddressBarPosition } from '../shared/layout';
 import { pageMenu, tabMenu, type MenuEntry, type PageCommand, type TabCommand } from './context-menu';
+import { forwardConsole } from './dev-console';
 import { safeFileName } from './filenames';
 import { searchUrl, toUrl } from './navigation';
 import { actionFor, type Action } from './shortcuts';
@@ -173,6 +174,7 @@ export function createBrowserWindow({ addressBar }: WindowOptions): BrowserWindo
     tab.contents.on('context-menu', (_event, params) => showPageMenu(tab, params));
     // Ctrl + mouse wheel, or pinch on a trackpad.
     tab.contents.on('zoom-changed', (_event, direction) => zoom(tab, direction));
+    forwardConsole(tab.contents, () => `tab ${tab.id} ${hostOf(tab.state().url)}`.trim(), { isPage: true });
 
     const index = options.index ?? insertionIndex(tabs, openerId);
     tabs.splice(Math.min(index, tabs.length), 0, tab);
@@ -231,6 +233,7 @@ export function createBrowserWindow({ addressBar }: WindowOptions): BrowserWindo
   }
 
   const byId = (id: unknown) => tabs.find((tab) => tab.id === id);
+  const hostOf = (url: string) => (URL.canParse(url) ? new URL(url).host : '');
 
   // Pages asking for a new window: links with target="_blank", Ctrl+click,
   // middle-click, window.open() and pop-ups all become tabs.
@@ -528,6 +531,7 @@ export function createBrowserWindow({ addressBar }: WindowOptions): BrowserWindo
     }
   }
   ui.on('before-input-event', handleInput);
+  forwardConsole(ui, () => 'ui');
 
   // --- Requests from the UI -------------------------------------------------
   // Every window registers these, so each one ignores messages that didn't
