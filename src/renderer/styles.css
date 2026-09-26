@@ -1,9 +1,12 @@
 :root {
   --bg: #ffffff;
+  --strip: #ececec;
   --fg: #1f1f1f;
   --muted: #6b6b6b;
+  --tab-hover: #dedede;
   --field: #f0f0f0;
   --field-focus: #ffffff;
+  --border: #d6d6d6;
   --ring: #3b82f6;
   color-scheme: light dark;
 }
@@ -11,10 +14,13 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #1f1f1f;
+    --strip: #161616;
     --fg: #f2f2f2;
     --muted: #9a9a9a;
+    --tab-hover: #2a2a2a;
     --field: #2c2c2c;
     --field-focus: #161616;
+    --border: #333333;
     --ring: #60a5fa;
   }
 }
@@ -31,24 +37,179 @@ body {
   color: var(--fg);
   font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
   overflow: hidden;
-}
-
-#toolbar {
-  height: var(--toolbar-height);
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  /* The empty parts of the toolbar move the window, like a title bar. */
-  -webkit-app-region: drag;
   user-select: none;
 }
 
-/* Leave room for the window buttons the OS draws over our toolbar. */
-[data-platform='darwin'] #toolbar {
+/* The window is three rows. Which row the address bar takes depends on the
+   address-bar setting; the page itself is drawn over #page-area. */
+body {
+  display: grid;
+  grid-template-rows: var(--tab-strip-height) var(--address-bar-height) 1fr;
+  grid-template-areas: 'tabs' 'address' 'page';
+}
+:root[data-address-bar='bottom'] body {
+  grid-template-rows: var(--tab-strip-height) 1fr var(--address-bar-height);
+  grid-template-areas: 'tabs' 'page' 'address';
+}
+
+/* --- Tab strip ------------------------------------------------------------ */
+
+#tabstrip {
+  grid-area: tabs;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 8px;
+  background: var(--strip);
+  /* Empty parts of the strip move the window, like a title bar. */
+  -webkit-app-region: drag;
+}
+
+/* Leave room for the window buttons the OS draws over the strip. */
+[data-platform='darwin'] #tabstrip {
   padding-left: 80px;
 }
-[data-platform='win32'] #toolbar {
+[data-platform='win32'] #tabstrip {
   padding-right: 150px;
+}
+
+#tabs {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab {
+  -webkit-app-region: no-drag;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* An explicit width (not just flex-basis) so the strip sizes to it;
+     tabs shrink towards min-width as more are opened, then the strip scrolls. */
+  width: 220px;
+  flex: 0 1 220px;
+  min-width: 64px;
+  height: 30px;
+  padding: 0 4px 0 10px;
+  border-radius: 8px 8px 0 0;
+  color: var(--muted);
+  cursor: default;
+}
+.tab:hover {
+  background: var(--tab-hover);
+}
+.tab.active {
+  background: var(--bg);
+  color: var(--fg);
+}
+.tab.dragging {
+  z-index: 1;
+  opacity: 0.85;
+}
+
+.tab .icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+}
+.tab .icon img {
+  width: 16px;
+  height: 16px;
+}
+.tab .icon img:not([src]) {
+  display: none;
+}
+/* No icon and not loading: give the space to the title. */
+.tab:not(.loading) .icon:has(img:not([src])) {
+  display: none;
+}
+/* A spinner replaces the icon while the page loads. */
+.tab.loading .icon img {
+  display: none;
+}
+.tab.loading .icon::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ring);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.tab .title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tab button,
+#new-tab {
+  -webkit-app-region: no-drag;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+}
+.tab button:hover,
+#new-tab:hover {
+  background: var(--field);
+}
+.tab button[hidden] {
+  display: none;
+}
+/* The close button shows on the active tab and on hover. */
+.tab .close {
+  visibility: hidden;
+}
+.tab.active .close,
+.tab:hover .close {
+  visibility: visible;
+}
+
+svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#new-tab {
+  width: 26px;
+  height: 26px;
+  margin-bottom: 2px;
+  color: var(--muted);
+}
+
+/* --- Address bar ---------------------------------------------------------- */
+
+#addressbar {
+  grid-area: address;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+:root[data-address-bar='bottom'] #addressbar {
+  border-bottom: 0;
+  border-top: 1px solid var(--border);
 }
 
 #field {
@@ -56,7 +217,6 @@ body {
   flex: 1;
   max-width: 720px;
   margin: 0 auto;
-  -webkit-app-region: no-drag;
 }
 
 #address {
@@ -70,6 +230,7 @@ body {
   font: inherit;
   text-align: center;
   outline: none;
+  user-select: text;
 }
 
 #address::placeholder {
@@ -82,6 +243,7 @@ body {
   text-align: left;
 }
 
+/* Loading bar, on the edge of the field that faces the page. */
 #progress {
   position: absolute;
   left: 8px;
@@ -94,10 +256,18 @@ body {
   transform: scaleX(0);
   opacity: 0;
 }
+:root[data-address-bar='bottom'] #progress {
+  bottom: auto;
+  top: 0;
+}
 
 .loading #progress {
   opacity: 1;
   animation: progress 2s ease-out forwards;
+}
+
+#page-area {
+  grid-area: page;
 }
 
 @keyframes progress {
@@ -106,5 +276,11 @@ body {
   }
   to {
     transform: scaleX(0.85);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }

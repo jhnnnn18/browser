@@ -8,12 +8,13 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "electron-vite dev --watch",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
-    "postinstall": "install-electron"
+    "postinstall": "install-electron",
+    "test:e2e": "npm run build && vitest run -c vitest.e2e.config.ts"
   },
   "devDependencies": {
     "@types/node": "^24.13.6",

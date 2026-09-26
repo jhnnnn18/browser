@@ -2,15 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Site icons are the only remote content the UI loads. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:"
     />
     <title>Browser</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header id="toolbar">
+    <header id="tabstrip">
+      <div id="tabs" role="tablist" aria-label="Tabs"></div>
+      <button id="new-tab" type="button" title="New tab" aria-label="New tab">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+      </button>
+    </header>
+    <div id="addressbar">
       <div id="field">
         <input
           id="address"
@@ -22,7 +29,9 @@
         />
         <div id="progress" aria-hidden="true"></div>
       </div>
-    </header>
+    </div>
+    <!-- Empty: the active tab's page is drawn on top of this area. -->
+    <main id="page-area"></main>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

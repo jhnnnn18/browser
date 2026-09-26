@@ -5,7 +5,7 @@
 // `window.browser` and nothing else; the UI never sees ipcRenderer itself.
 
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { Channels, type BrowserApi, type PageState } from '../shared/ipc';
+import { Channels, type BrowserApi, type WindowState } from '../shared/ipc';
 
 function subscribe<T extends unknown[]>(channel: string, listener: (...args: T) => void) {
   const wrapped = (_event: IpcRendererEvent, ...args: unknown[]) => listener(...(args as T));
@@ -23,7 +23,12 @@ const api: BrowserApi = {
   reload: () => ipcRenderer.send(Channels.reload),
   stop: () => ipcRenderer.send(Channels.stop),
   focusPage: () => ipcRenderer.send(Channels.focusPage),
-  onState: (listener) => subscribe<[PageState]>(Channels.state, listener),
+  newTab: () => ipcRenderer.send(Channels.newTab),
+  closeTab: (id) => ipcRenderer.send(Channels.closeTab, id),
+  activateTab: (id) => ipcRenderer.send(Channels.activateTab, id),
+  moveTab: (id, toIndex) => ipcRenderer.send(Channels.moveTab, id, toIndex),
+  toggleMute: (id) => ipcRenderer.send(Channels.toggleMute, id),
+  onState: (listener) => subscribe<[WindowState]>(Channels.state, listener),
   onFocusAddress: (listener) => subscribe(Channels.focusAddress, listener),
 };
 

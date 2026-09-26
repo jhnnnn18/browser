@@ -1,31 +1,51 @@
-// The toolbar UI. It only knows about the page through `window.browser`
-// (see src/preload/index.ts); it never touches the page directly.
+// The browser's own UI: tab strip and address field. It only knows about
+// pages through `window.browser` (see src/preload/index.ts) and redraws from
+// the WindowState the main process sends.
 
-import type { PageState } from '../shared/ipc';
-import { TOOLBAR_HEIGHT } from '../shared/layout';
+import type { TabState } from '../shared/ipc';
+import { ADDRESS_BAR_HEIGHT, TAB_STRIP_HEIGHT } from '../shared/layout';
+import { createTabStrip } from './tabs';
 
 const browser = window.browser;
 const address = document.querySelector<HTMLInputElement>('#address')!;
 const root = document.documentElement;
 
 root.dataset.platform = browser.platform;
-root.style.setProperty('--toolbar-height', `${TOOLBAR_HEIGHT}px`);
+root.style.setProperty('--tab-strip-height', `${TAB_STRIP_HEIGHT}px`);
+root.style.setProperty('--address-bar-height', `${ADDRESS_BAR_HEIGHT}px`);
 
-let state: PageState = { url: '', title: '', loading: false, canGoBack: false, canGoForward: false };
+const strip = createTabStrip(document.querySelector('#tabs')!, {
+  activate: (id) => browser.activateTab(id),
+  close: (id) => browser.closeTab(id),
+  move: (id, toIndex) => browser.moveTab(id, toIndex),
+  toggleMute: (id) => browser.toggleMute(id),
+});
+document.querySelector('#new-tab')!.addEventListener('click', () => browser.newTab());
+
+let active: TabState | null = null;
 
 // While you're typing, show what you typed. Otherwise show the page title,
 // falling back to the URL.
-function render() {
-  root.classList.toggle('loading', state.loading);
-  document.title = state.title || 'Browser';
+function renderAddress() {
+  root.classList.toggle('loading', active?.loading ?? false);
+  document.title = active?.title || 'Browser';
   if (document.activeElement !== address) {
-    address.value = state.title || state.url;
+    address.value = active ? active.title || active.url : '';
   }
 }
 
-browser.onState((next) => {
-  state = next;
-  render();
+browser.onState((state) => {
+  const switched = state.activeId !== active?.id;
+  active = state.tabs.find((tab) => tab.id === state.activeId) ?? null;
+  root.dataset.addressBar = state.addressBar;
+  strip.render(state);
+  // Switched tabs while the field has focus (e.g. Ctrl+T while typing):
+  // start over with the new tab's address.
+  if (switched && document.activeElement === address) {
+    address.value = active?.url ?? '';
+    address.select();
+  }
+  renderAddress();
 });
 
 browser.onFocusAddress(() => {
@@ -34,11 +54,11 @@ browser.onFocusAddress(() => {
 });
 
 address.addEventListener('focus', () => {
-  address.value = state.url;
+  address.value = active?.url ?? '';
   address.select();
 });
 
-address.addEventListener('blur', render);
+address.addEventListener('blur', renderAddress);
 
 address.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
@@ -49,8 +69,9 @@ address.addEventListener('keydown', (event) => {
   } else if (event.key === 'Escape') {
     event.preventDefault();
     // First Escape undoes your edits; a second one hands focus back to the page.
-    if (address.value !== state.url) {
-      address.value = state.url;
+    const url = active?.url ?? '';
+    if (address.value !== url) {
+      address.value = url;
       address.select();
     } else {
       address.blur();
@@ -59,4 +80,4 @@ address.addEventListener('keydown', (event) => {
   }
 });
 
-render();
+renderAddress();
