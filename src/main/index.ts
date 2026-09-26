@@ -1,7 +1,12 @@
 // App entry point: lifecycle, menu and app-wide security settings.
 
 import { app, BrowserWindow, Menu, session } from 'electron';
+import { parseAddressBarPosition } from '../shared/layout';
 import { createBrowserWindow } from './window';
+
+// Temporary until there's a settings page: start with
+//   npm run dev -- -- --address-bar=bottom
+const addressBar = parseAddressBarPosition(app.commandLine.getSwitchValue('address-bar'));
 
 // Permissions a website may use without asking. Everything else (camera,
 // microphone, location, notifications...) is denied until we build a
@@ -32,11 +37,11 @@ app.whenReady().then(() => {
     callback(ALLOWED_PERMISSIONS.has(permission));
   });
 
-  createBrowserWindow();
+  createBrowserWindow({ addressBar });
 
   // macOS: clicking the dock icon with no windows open makes a new one.
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createBrowserWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createBrowserWindow({ addressBar });
   });
 });
 

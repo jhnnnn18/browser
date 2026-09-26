@@ -4,8 +4,8 @@ A minimal web browser for Windows, macOS and Linux, built with Electron and
 TypeScript. Inspired by [Search](https://github.com/driceroland/Search): one
 field to search or type an address, and as little else as possible.
 
-**Status:** early. One window, one page, the address field and keyboard
-navigation. Tabs, history and ad blocking are next (see [Roadmap](#roadmap)).
+**Status:** early. Tabs, the address field and keyboard navigation work.
+History, a built-in VPN and ad blocking are next; see [ROADMAP.md](ROADMAP.md).
 
 ## Running it
 
@@ -60,15 +60,24 @@ project needs root.
 | `npm start`         | Run the compiled app from `out/`                     |
 | `npm run typecheck` | Type-check all code                                  |
 | `npm test`          | Run unit tests                                       |
+| `npm run test:e2e`  | Build, launch the real app and drive it (see below)  |
+
+To try the address bar at the bottom: `npm run dev -- -- --address-bar=bottom`.
 
 ## Keyboard shortcuts
 
-| Action                | Windows / Linux           | macOS    |
-| --------------------- | ------------------------- | -------- |
-| Focus address field   | Ctrl+L, Alt+D, F6         | Cmd+L    |
-| Back / Forward        | Alt+Left / Alt+Right      | Cmd+[ / Cmd+] |
-| Reload                | Ctrl+R, F5                | Cmd+R    |
-| Undo edit / leave field | Esc / Esc again         | same     |
+| Action                  | Windows / Linux                  | macOS                          |
+| ----------------------- | -------------------------------- | ------------------------------ |
+| Focus address field     | Ctrl+L, Alt+D, F6                | Cmd+L                          |
+| Back / Forward          | Alt+Left / Alt+Right             | Cmd+[ / Cmd+]                  |
+| Reload                  | Ctrl+R, F5                       | Cmd+R                          |
+| New tab                 | Ctrl+T                           | Cmd+T                          |
+| Close tab               | Ctrl+W, Ctrl+F4, middle-click    | Cmd+W, middle-click            |
+| Reopen closed tab       | Ctrl+Shift+T                     | Cmd+Shift+T                    |
+| Next / previous tab     | Ctrl+Tab / Ctrl+Shift+Tab, Ctrl+PgDn / Ctrl+PgUp | Ctrl+Tab / Ctrl+Shift+Tab, Cmd+Shift+] / [, Cmd+Opt+→ / ← |
+| Go to tab 1–8 / last    | Ctrl+1…8 / Ctrl+9                | Cmd+1…8 / Cmd+9                |
+| DevTools for the page   | F12, Ctrl+Shift+I                | Cmd+Opt+I                      |
+| Undo edit / leave field | Esc / Esc again                  | same                           |
 
 ## How it's put together
 
@@ -78,19 +87,19 @@ An Electron app is several processes. Ours has three kinds of code:
 ┌────────────────────────────────────────────┐
 │  BrowserWindow (native OS window)          │
 │ ┌────────────────────────────────────────┐ │
-│ │ Renderer: our UI (src/renderer)        │ │ <- the address field
-│ └────────────────────────────────────────┘ │
+│ │ Renderer: our UI (src/renderer)        │ │ <- tab strip + address
+│ └────────────────────────────────────────┘ │    field; fills the window
 │ ┌────────────────────────────────────────┐ │
-│ │ WebContentsView: the website           │ │ <- sandboxed, no access
-│ │                                        │ │    to our code at all
+│ │ WebContentsView: the active tab        │ │ <- one per tab, sandboxed,
+│ │                                        │ │    no access to our code
 │ └────────────────────────────────────────┘ │
 └────────────────────────────────────────────┘
         ▲ both are controlled by ▼
    Main process (src/main): windows, views, navigation, shortcuts
 ```
 
-- **Main process** (`src/main`) is Node.js. It owns the window and the page
-  view, decides what URL to load, and handles keyboard shortcuts.
+- **Main process** (`src/main`) is Node.js. It owns the window and the list
+  of tabs, decides what URL to load, and handles keyboard shortcuts.
 - **Renderer** (`src/renderer`) is our UI, a normal web page written in plain
   TypeScript. It can't touch Node or the website.
 - **Preload** (`src/preload`) is the bridge. It gives the UI a
@@ -104,8 +113,18 @@ A typical round trip, typing `example.com` and pressing Enter:
 2. `preload/index.ts` sends that over IPC as `nav:navigate`.
 3. `main/window.ts` receives it, `main/navigation.ts` turns it into
    `https://example.com`, and the page view loads it.
-4. As the page loads, `main/window.ts` sends `nav:state` messages back, and the
-   UI shows the loading bar and then the page title.
+4. As the page loads, `main/window.ts` sends `window:state` messages back, and
+   the UI shows the loading bar and then the page title.
+
+**The main process owns the tab list; the UI only draws it.** Whenever
+anything changes, main sends a complete `WindowState` (every tab, which one
+is active). The UI redraws from it and never keeps its own copy, so the two
+can't drift apart. Clicking × on a tab sends `tabs:close` with the tab's id;
+main closes it and sends the new state. An id that no longer exists (a tab
+closed a moment ago) is simply ignored.
+
+Each tab has its own page view. Only the active one is visible; the others
+stay attached but hidden and keep running (audio keeps playing).
 
 Why the website isn't simply an `<iframe>` or `<webview>` in our UI: a
 separate `WebContentsView` is fully isolated from our UI and from Node, which
@@ -117,28 +136,37 @@ is what stops a malicious site from reaching your files.
 src/
   main/
     index.ts        app startup, menu, permissions
-    window.ts       one browser window: UI + page view + IPC handlers
+    window.ts       one browser window: the tab list, layout, IPC handlers
+    tab.ts          one tab: its page view and the state the UI needs
+    tab-list.ts     rules: where new tabs go, which tab is next, reordering
     navigation.ts   "is this an address or a search?"
     shortcuts.ts    keyboard shortcut table (per platform)
   preload/
     index.ts        exposes window.browser to the UI
   renderer/
-    index.html      the toolbar markup
-    main.ts         toolbar behaviour
-    styles.css      toolbar look, light and dark
+    index.html      tab strip + address bar markup
+    main.ts         address field behaviour, wiring
+    tabs.ts         tab strip: drawing, clicks, drag to reorder
+    styles.css      look, light and dark, address bar top or bottom
   shared/
     ipc.ts          the UI <-> main message contract
-    layout.ts       toolbar height, used by both sides
+    layout.ts       where the page goes (address bar top or bottom)
 test/               unit tests (Vitest)
+e2e/                end-to-end tests that launch the real app
+```
+
+## End-to-end tests
+
+`npm run test:e2e` launches the built app and drives it with real key
+presses and mouse clicks, checking what's on screen through the Chrome
+DevTools Protocol. It needs an X11 display and `xdotool`, so it runs on
+Linux, in CI or locally under a virtual display. On Fedora, in the toolbox:
+
+```sh
+sudo dnf install -y xorg-x11-server-Xvfb xdotool
+xvfb-run -a npm run test:e2e
 ```
 
 ## Roadmap
 
-1. ~~Skeleton: window, address field, navigation, shortcuts~~
-2. Tabs
-3. History and address-field suggestions
-4. Session restore, loading tabs only when opened
-5. Ad blocking
-6. Hide page elements, reading mode
-7. Vertical and collapsible tabs, picture-in-picture, passwords
-8. Installers and auto-update for Windows, macOS and Linux
+See [ROADMAP.md](ROADMAP.md).

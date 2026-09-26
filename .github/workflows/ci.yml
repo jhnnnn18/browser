@@ -23,3 +23,19 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  e2e:
+    # Launches the real app on a virtual display and drives it with real
+    # key presses and clicks (xdotool), so it runs on Linux only.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: sudo apt-get update && sudo apt-get install -y xvfb xdotool
+      # Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: npm ci
+      - run: xvfb-run -a npm run test:e2e
