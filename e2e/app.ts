@@ -154,7 +154,18 @@ export class App {
     }, 15000);
     app.ui = await Page.connect(target.webSocketDebuggerUrl);
     await waitFor('the UI to render', () => app.ui.eval('!!document.querySelector(".tab")'));
-    // xdotool sends input to whatever is under the pointer; put it on our window.
+    // The window only appears after its first paint, which can take a while
+    // on a machine without a GPU (like CI). Real key presses sent before then
+    // go nowhere, and the page itself can't tell (it reports "visible" and
+    // "focused" early), so ask the X server whether the window is on screen,
+    // then give it keyboard focus.
+    const windowId = await waitFor(
+      'the window to appear on screen',
+      () => xdotoolOutput('search', '--onlyvisible', '--pid', String(child.pid)).split('\n')[0],
+      15000,
+    );
+    xdotool('windowfocus', '--sync', windowId);
+    // Keep the pointer over our window, away from any other window.
     const [x, y] = await app.ui.eval<[number, number]>('[screenX + 300, screenY + 200]');
     xdotool('mousemove', String(x), String(y));
     return app;
@@ -246,4 +257,13 @@ export class App {
 
 function xdotool(...args: string[]) {
   execFileSync('xdotool', args);
+}
+
+/** Run xdotool and return what it printed ('' if it found nothing). */
+function xdotoolOutput(...args: string[]): string {
+  try {
+    return execFileSync('xdotool', args, { encoding: 'utf8' }).trim();
+  } catch {
+    return ''; // `search` exits with an error when nothing matches.
+  }
 }
