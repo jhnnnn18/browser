@@ -55,7 +55,7 @@ project needs root.
 
 | Command             | What it does                                         |
 | ------------------- | ---------------------------------------------------- |
-| `npm run dev`       | Start the app with live reload of the UI             |
+| `npm run dev`       | Start the app; reloads on every saved change         |
 | `npm run build`     | Compile everything into `out/`                       |
 | `npm start`         | Run the compiled app from `out/`                     |
 | `npm run typecheck` | Type-check all code                                  |
@@ -64,9 +64,14 @@ project needs root.
 
 To try the address bar at the bottom: `npm run dev -- -- --address-bar=bottom`.
 
-While `npm run dev` runs, `console.log` messages (and warnings and errors)
-from our UI and from web pages are printed in the terminal, labelled
-`[ui]` or `[tab 3 example.com]`. Main-process logs appear there too.
+While `npm run dev` runs:
+
+- Saving a file in `src/renderer/` reloads the UI in place (the tab strip
+  and address bar); saving one in `src/main/`, `src/preload/` or
+  `src/shared/` rebuilds and restarts the whole app, so open tabs are lost.
+- `console.log` messages (and warnings and errors) from our UI and from web
+  pages are printed in the terminal, labelled `[ui]` or `[tab 3 example.com]`.
+  Main-process logs appear there too, unlabelled.
 
 ## Keyboard shortcuts
 
