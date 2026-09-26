@@ -64,6 +64,10 @@ project needs root.
 
 To try the address bar at the bottom: `npm run dev -- -- --address-bar=bottom`.
 
+While `npm run dev` runs, `console.log` messages (and warnings and errors)
+from our UI and from web pages are printed in the terminal, labelled
+`[ui]` or `[tab 3 example.com]`. Main-process logs appear there too.
+
 ## Keyboard shortcuts
 
 | Action                  | Windows / Linux                  | macOS                          |
@@ -140,6 +144,7 @@ src/
     tab.ts          one tab: its page view and the state the UI needs
     tab-list.ts     rules: where new tabs go, which tab is next, reordering
     navigation.ts   "is this an address or a search?"
+    dev-console.ts  prints UI and page console messages in the terminal
     shortcuts.ts    keyboard shortcut table (per platform)
   preload/
     index.ts        exposes window.browser to the UI
