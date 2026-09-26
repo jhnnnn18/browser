@@ -42,7 +42,8 @@ Claude side panel.
 - [ ] **4. Google and Outlook sign-in check.** Google often refuses sign-in
   from Electron-based browsers ("This browser or app may not be secure"),
   usually because the browser identifies itself as Electron. Check both
-  sign-ins early; present a standard Chrome identification if needed.
+  sign-ins early (and signing in to claude.ai with Google, for step 12a);
+  present a standard Chrome identification if needed.
 - [ ] **5. Storage, history, suggestions:** settings and history storage,
   address-field suggestions (including "switch to open tab"), suggestions
   pop-up that opens upward when the address bar is at the bottom, saved
@@ -93,15 +94,31 @@ license.
 - [ ] **11. Element hiding and reading mode.** Pick an element and hide it on
   that site for good. Reading mode shows the article in its own sandboxed
   view with our own template, using the theme's fonts and colours.
-- [ ] **12. Claude side panel**
-  - A panel beside the page for chatting with Claude, including about the
-    current page. Claude never acts on pages: no clicking, typing or
-    navigating.
-  - Page text is sent only when you ask, and the panel shows what is being
-    sent. Uses the same article extraction as reading mode.
-  - Each person uses their own Claude account, never a key built into the
-    browser. How they sign in is still to be decided (see "Open questions").
-  - Claude to start; other providers maybe later.
+- [ ] **12a. Claude side panel (claude.ai)**
+  - A panel beside the page showing the claude.ai website. You sign in
+    there with your own Claude account as usual, using your existing plan;
+    no API key and no API billing. The browser never sees your password.
+  - The panel is web content like any tab: sandboxed, through the VPN, and
+    stays signed in between restarts (except in private windows).
+  - A "Copy page for Claude" button puts the current page's article text
+    on the clipboard (the same extraction as reading mode) to paste into
+    the chat. Nothing is sent anywhere automatically.
+  - Claude never acts on pages: no clicking, typing or navigating.
+  - Toggle with a toolbar button and a shortcut; the page narrows to make
+    room (the layout function gains a side-panel area).
+- [ ] **12b. "Ask about this page" with your own API key (optional mode)**
+  - For people who want answers about the page without copying: paste an
+    API key from your own Claude Console account once (billed pay-as-you-go
+    by Anthropic, separately from any Claude.ai plan); it's stored encrypted
+    with the OS keychain and only the main process uses it.
+  - Our own chat UI in the panel, streaming answers. The page's article text
+    is included only when you ask about the page, and the panel shows what
+    was sent. Follow-up questions reuse the page through prompt caching.
+  - Anthropic's API has no "Sign in with Claude" for third-party desktop
+    apps (its options are API keys, Workload Identity Federation for
+    servers, and App Attest for iOS/macOS apps billed to the developer), so
+    a personal key is how this mode uses your own account.
+- Other AI providers: maybe later.
 - [ ] **13. Tab layouts and split view:** vertical, collapsible and pinned
   tabs; two tabs side by side.
 
@@ -121,24 +138,6 @@ license.
   Developer ID).
 - [ ] **18. Auto-update** (`electron-updater` + GitHub Releases). Electron
   releases carry Chromium security fixes, so staying current matters.
-
-## Open questions
-
-- **How people sign in to Claude (step 12).** Anthropic's API has no
-  "Sign in with Claude" for third-party desktop apps; its documented options
-  are API keys, Workload Identity Federation (for servers) and App Attest
-  (for iOS/macOS apps, billed to the developer). Claude.ai subscriptions
-  (Pro/Max) aren't among them. Two ways to give each person their own
-  account:
-  - **A. Claude.ai in the panel:** the panel shows the claude.ai website and
-    you sign in there as usual, using your existing subscription. No API
-    key or API billing, but no automatic "ask about this page": page text
-    would be copied into the chat with a button.
-  - **B. Your own API key:** you create a key in the Claude Console
-    (pay-as-you-go, billed separately from any Claude.ai subscription) and
-    paste it in once; it's stored encrypted with the OS keychain. The panel
-    is our own UI, streams answers, and can include the page automatically
-    when you ask about it.
 
 ## Decided against
 
