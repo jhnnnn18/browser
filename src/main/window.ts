@@ -2,27 +2,36 @@
 //
 //   BrowserWindow
 //   ├── webContents        -> our UI (src/renderer), fills the window
-//   └── WebContentsView    -> the active tab's page (others are detached)
+//   └── WebContentsView    -> one per tab; only the active one is visible
 //
 // This file owns the tab list. The UI never changes it directly: it sends
 // requests over IPC (see src/shared/ipc.ts), this file acts on them, and
 // sends the whole WindowState back.
 
 import {
+  app,
   BrowserWindow,
+  clipboard,
+  dialog,
   ipcMain,
+  Menu,
   nativeTheme,
+  type ContextMenuParams,
   type HandlerDetails,
   type IpcMainEvent,
+  type WebContents,
   type WindowOpenHandlerResponse,
 } from 'electron';
 import { join } from 'node:path';
 import { Channels, type WindowState } from '../shared/ipc';
 import { computeLayout, TAB_STRIP_HEIGHT, type AddressBarPosition } from '../shared/layout';
-import { toUrl } from './navigation';
+import { pageMenu, tabMenu, type MenuEntry, type PageCommand, type TabCommand } from './context-menu';
+import { safeFileName } from './filenames';
+import { searchUrl, toUrl } from './navigation';
 import { actionFor, type Action } from './shortcuts';
 import { Tab } from './tab';
 import { cycleIndex, indexForNumber, insertionIndex, moveItem, nextActiveIndex } from './tab-list';
+import { stepZoom } from './zoom';
 
 const LIGHT = { background: '#ffffff', foreground: '#1f1f1f' };
 const DARK = { background: '#1f1f1f', foreground: '#f2f2f2' };
@@ -161,6 +170,9 @@ export function createBrowserWindow({ addressBar }: WindowOptions): BrowserWindo
     });
     // Shortcuts work while the page has focus, too.
     tab.contents.on('before-input-event', handleInput);
+    tab.contents.on('context-menu', (_event, params) => showPageMenu(tab, params));
+    // Ctrl + mouse wheel, or pinch on a trackpad.
+    tab.contents.on('zoom-changed', (_event, direction) => zoom(tab, direction));
 
     const index = options.index ?? insertionIndex(tabs, openerId);
     tabs.splice(Math.min(index, tabs.length), 0, tab);
@@ -243,6 +255,198 @@ export function createBrowserWindow({ addressBar }: WindowOptions): BrowserWindo
     };
   }
 
+  // --- Right-click menus ----------------------------------------------------
+  function popup<C extends string>(entries: MenuEntry<C>[], run: (command: C, arg?: string) => void) {
+    if (entries.length === 0) return;
+    const template = entries.map((entry) =>
+      entry.type === 'separator'
+        ? { type: 'separator' as const }
+        : { label: entry.label, enabled: entry.enabled, click: () => run(entry.command, entry.arg) },
+    );
+    Menu.buildFromTemplate(template).popup({ window: win });
+  }
+
+  /** Only open things in a tab that are safe to show at the top level. */
+  const openable = (url: string) => /^(https?|file):/i.test(url) || /^data:image\//i.test(url);
+
+  function openFrom(opener: Tab | undefined, url: string, activate: boolean) {
+    if (openable(url)) createTab({ url, openerId: opener?.id ?? null, activate });
+  }
+
+  function showPageMenu(tab: Tab, params: ContextMenuParams) {
+    const history = tab.contents.navigationHistory;
+    const entries = pageMenu(params, {
+      surface: 'page',
+      canGoBack: history.canGoBack(),
+      canGoForward: history.canGoForward(),
+      inspect: true,
+    });
+    popup(entries, (command, arg) => runPageCommand(tab.contents, command, arg, params, tab));
+  }
+
+  // Our own UI gets a menu only for its text fields (the address and find
+  // fields), plus "Inspect" while developing.
+  ui.on('context-menu', (_event, params) => {
+    const entries = pageMenu(params, {
+      surface: 'ui',
+      canGoBack: false,
+      canGoForward: false,
+      inspect: !app.isPackaged,
+    });
+    popup(entries, (command, arg) => runPageCommand(ui, command, arg, params));
+  });
+
+  function runPageCommand(
+    contents: WebContents,
+    command: PageCommand,
+    arg: string | undefined,
+    params: ContextMenuParams,
+    tab?: Tab,
+  ) {
+    switch (command) {
+      case 'replace-misspelling':
+        if (arg) contents.replaceMisspelling(arg);
+        break;
+      case 'add-to-dictionary':
+        if (arg) contents.session.addWordToSpellCheckerDictionary(arg);
+        break;
+      case 'open-link-new-tab':
+        openFrom(tab, params.linkURL, true);
+        break;
+      case 'open-link-background-tab':
+        openFrom(tab, params.linkURL, false);
+        break;
+      case 'save-link-as':
+        // Without a download handler Electron asks where to save.
+        contents.downloadURL(params.linkURL);
+        break;
+      case 'copy-link':
+        clipboard.writeText(params.linkURL);
+        break;
+      case 'open-image-new-tab':
+        openFrom(tab, params.srcURL, true);
+        break;
+      case 'save-image-as':
+        contents.downloadURL(params.srcURL);
+        break;
+      case 'copy-image':
+        contents.copyImageAt(params.x, params.y);
+        break;
+      case 'copy-image-address':
+        clipboard.writeText(params.srcURL);
+        break;
+      case 'undo':
+        contents.undo();
+        break;
+      case 'redo':
+        contents.redo();
+        break;
+      case 'cut':
+        contents.cut();
+        break;
+      case 'copy':
+        contents.copy();
+        break;
+      case 'paste':
+        contents.paste();
+        break;
+      case 'select-all':
+        contents.selectAll();
+        break;
+      case 'search-selection':
+        openFrom(tab, searchUrl(params.selectionText.trim()), true);
+        break;
+      case 'back':
+        contents.navigationHistory.goBack();
+        break;
+      case 'forward':
+        contents.navigationHistory.goForward();
+        break;
+      case 'reload':
+        contents.reload();
+        break;
+      case 'save-page-as':
+        void savePageAs(contents);
+        break;
+      case 'view-source':
+        if (tab && openable(contents.getURL())) {
+          createTab({ url: `view-source:${contents.getURL()}`, openerId: tab.id, activate: true });
+        }
+        break;
+      case 'inspect':
+        if (!contents.isDevToolsOpened()) contents.openDevTools({ mode: 'detach' });
+        contents.inspectElement(params.x, params.y);
+        break;
+    }
+  }
+
+  async function savePageAs(contents: WebContents) {
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      defaultPath: join(app.getPath('downloads'), `${safeFileName(contents.getTitle())}.html`),
+      filters: [{ name: 'Web page, complete', extensions: ['html', 'htm'] }],
+    });
+    if (canceled || !filePath) return;
+    await contents.savePage(filePath, 'HTMLComplete').catch(() => {
+      // The page went away or the disk refused; nothing useful to add yet.
+    });
+  }
+
+  function showTabMenu(tab: Tab) {
+    const entries = tabMenu({
+      index: tabs.indexOf(tab),
+      count: tabs.length,
+      muted: tab.contents.isAudioMuted(),
+      hasPage: tab.hasPage,
+    });
+    popup(entries, (command) => runTabCommand(tab, command));
+  }
+
+  function runTabCommand(tab: Tab, command: TabCommand) {
+    switch (command) {
+      case 'reload':
+        tab.contents.reload();
+        break;
+      case 'duplicate':
+        createTab({ url: tab.state().url, index: tabs.indexOf(tab) + 1, activate: true });
+        break;
+      case 'toggle-mute':
+        tab.toggleMute();
+        break;
+      case 'close':
+        closeTab(tab);
+        break;
+      case 'close-others':
+        for (const other of tabs.filter((t) => t !== tab)) closeTab(other);
+        activate(tab);
+        break;
+      case 'close-right':
+        for (const other of tabs.slice(tabs.indexOf(tab) + 1)) closeTab(other);
+        break;
+    }
+  }
+
+  // --- Find and zoom --------------------------------------------------------
+  function openFind() {
+    if (!active?.hasPage) return;
+    active.openFind();
+    ui.focus();
+    ui.send(Channels.focusFind);
+  }
+
+  function findAgain(forward: boolean) {
+    const query = active?.state().find?.query;
+    if (active && query) active.findText(query, { forward, next: true });
+    else openFind();
+  }
+
+  function zoom(tab: Tab | null, direction: 'in' | 'out' | 'reset') {
+    if (!tab?.hasPage) return;
+    const contents = tab.contents;
+    contents.setZoomFactor(direction === 'reset' ? 1 : stepZoom(contents.getZoomFactor(), direction));
+    // Zoom is per site, so other tabs may have changed too: send everything.
+    sendState();
+  }
+
   // --- Commands (from shortcuts and the UI) ---------------------------------
   function navigate(input: string) {
     const url = toUrl(input);
@@ -289,6 +493,24 @@ export function createBrowserWindow({ addressBar }: WindowOptions): BrowserWindo
         if (!active?.hasPage) break;
         if (active.contents.isDevToolsOpened()) active.contents.closeDevTools();
         else active.contents.openDevTools({ mode: 'detach' });
+        break;
+      case 'find':
+        openFind();
+        break;
+      case 'find-next':
+        findAgain(true);
+        break;
+      case 'find-previous':
+        findAgain(false);
+        break;
+      case 'zoom-in':
+        zoom(active, 'in');
+        break;
+      case 'zoom-out':
+        zoom(active, 'out');
+        break;
+      case 'zoom-reset':
+        zoom(active, 'reset');
         break;
       default: {
         // tab-1 ... tab-9
@@ -344,6 +566,20 @@ export function createBrowserWindow({ addressBar }: WindowOptions): BrowserWindo
     if (tab && Number.isInteger(toIndex)) moveTab(tab, toIndex as number);
   });
   handle(Channels.toggleMute, (id) => byId(id)?.toggleMute());
+  handle(Channels.tabMenu, (id) => {
+    const tab = byId(id);
+    if (tab) showTabMenu(tab);
+  });
+  handle(Channels.find, (text, forward, next) => {
+    if (typeof text === 'string' && typeof forward === 'boolean' && typeof next === 'boolean') {
+      active?.findText(text, { forward, next });
+    }
+  });
+  handle(Channels.stopFind, () => {
+    active?.closeFind();
+    if (active?.hasPage) active.contents.focus();
+  });
+  handle(Channels.resetZoom, () => zoom(active, 'reset'));
 
   // --- Theme ----------------------------------------------------------------
   const onThemeUpdated = () => {

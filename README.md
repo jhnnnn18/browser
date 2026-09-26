@@ -4,7 +4,8 @@ A minimal web browser for Windows, macOS and Linux, built with Electron and
 TypeScript. Inspired by [Search](https://github.com/driceroland/Search): one
 field to search or type an address, and as little else as possible.
 
-**Status:** early. Tabs, the address field and keyboard navigation work.
+**Status:** early. Tabs, the address field, right-click menus, find in page
+and zoom work.
 History, a built-in VPN and ad blocking are next; see [ROADMAP.md](ROADMAP.md).
 
 ## Running it
@@ -77,6 +78,9 @@ To try the address bar at the bottom: `npm run dev -- -- --address-bar=bottom`.
 | Next / previous tab     | Ctrl+Tab / Ctrl+Shift+Tab, Ctrl+PgDn / Ctrl+PgUp | Ctrl+Tab / Ctrl+Shift+Tab, Cmd+Shift+] / [, Cmd+Opt+→ / ← |
 | Go to tab 1–8 / last    | Ctrl+1…8 / Ctrl+9                | Cmd+1…8 / Cmd+9                |
 | DevTools for the page   | F12, Ctrl+Shift+I                | Cmd+Opt+I                      |
+| Find in page            | Ctrl+F                           | Cmd+F                          |
+| Next / previous match   | Enter / Shift+Enter, F3 / Shift+F3, Ctrl+G / Ctrl+Shift+G | Enter / Shift+Enter, Cmd+G / Cmd+Shift+G |
+| Zoom in / out / reset   | Ctrl+= / Ctrl+− / Ctrl+0, Ctrl+wheel | Cmd+= / Cmd+− / Cmd+0      |
 | Undo edit / leave field | Esc / Esc again                  | same                           |
 
 ## How it's put together
@@ -139,6 +143,9 @@ src/
     window.ts       one browser window: the tab list, layout, IPC handlers
     tab.ts          one tab: its page view and the state the UI needs
     tab-list.ts     rules: where new tabs go, which tab is next, reordering
+    context-menu.ts what goes in each right-click menu
+    zoom.ts         zoom steps
+    filenames.ts    safe file names from page titles
     navigation.ts   "is this an address or a search?"
     shortcuts.ts    keyboard shortcut table (per platform)
   preload/

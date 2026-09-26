@@ -17,12 +17,20 @@ end-to-end tests and CI.
   tab, mute tab, DevTools (F12), layout function with the address bar on
   top or bottom (`--address-bar=bottom` until there's a settings page),
   container field on every tab, end-to-end tests in CI.
-- [ ] **3. Browser basics:** right-click menu, find in page, zoom, downloads,
-  error pages.
+- [ ] **3a. Right-click menus, find in page, zoom.** Native menus for pages,
+  links, images, selected text, text fields (with spelling suggestions) and
+  tabs. Find replaces the address field while open, per tab. Zoom per site
+  (Chromium already remembers it between restarts).
+- [ ] **3b. Downloads and error pages.** A pop-over view above the page (reused
+  by suggestions in step 4). Downloads go straight to the Downloads folder;
+  "Save … as…" asks. Friendly error pages drawn by our UI, with Try again.
+  Invalid certificates: blocked, with a "Continue anyway (unsafe)" option
+  that lasts for that site's certificate until the browser closes, and a
+  "Not secure" warning while on it.
 - [ ] **4. Storage, history, suggestions:** settings and history storage,
   address-field suggestions (including "switch to open tab"), suggestions
   pop-up that opens upward when the address bar is at the bottom, saved
-  address-bar position.
+  address-bar position, saved downloads list.
 - [ ] **5. Session restore:** tabs come back on launch; a page only loads when
   its tab is first opened. Crash-safe saving.
 

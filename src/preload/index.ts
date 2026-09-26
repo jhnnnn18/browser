@@ -28,8 +28,13 @@ const api: BrowserApi = {
   activateTab: (id) => ipcRenderer.send(Channels.activateTab, id),
   moveTab: (id, toIndex) => ipcRenderer.send(Channels.moveTab, id, toIndex),
   toggleMute: (id) => ipcRenderer.send(Channels.toggleMute, id),
+  tabMenu: (id) => ipcRenderer.send(Channels.tabMenu, id),
+  find: (text, { forward, next }) => ipcRenderer.send(Channels.find, text, forward, next),
+  stopFind: () => ipcRenderer.send(Channels.stopFind),
+  resetZoom: () => ipcRenderer.send(Channels.resetZoom),
   onState: (listener) => subscribe<[WindowState]>(Channels.state, listener),
   onFocusAddress: (listener) => subscribe(Channels.focusAddress, listener),
+  onFocusFind: (listener) => subscribe(Channels.focusFind, listener),
 };
 
 contextBridge.exposeInMainWorld('browser', api);
