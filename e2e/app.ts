@@ -7,8 +7,10 @@
 // exactly what our shortcuts rely on.
 
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const ROOT = join(__dirname, '..');
@@ -137,17 +139,22 @@ export class App {
   private constructor(
     private process: ChildProcess,
     private port: number,
+    private profile: string,
   ) {}
 
   static async launch(args: string[] = []): Promise<App> {
     const port = 9400 + Math.floor(Math.random() * 500);
+    // A fresh profile every time: Chromium remembers things like zoom per
+    // site, which would otherwise leak from one test run into the next.
+    const profile = mkdtempSync(join(tmpdir(), 'browser-e2e-'));
     // Chromium refuses to run as root without this; normal users don't need it.
     const sandbox = process.getuid?.() === 0 ? ['--no-sandbox'] : [];
-    const child = spawn(ELECTRON, [...sandbox, `--remote-debugging-port=${port}`, ROOT, ...args], {
-      stdio: 'ignore',
-      env: { ...process.env, ELECTRON_RENDERER_URL: '' },
-    });
-    const app = new App(child, port);
+    const child = spawn(
+      ELECTRON,
+      [...sandbox, `--user-data-dir=${profile}`, `--remote-debugging-port=${port}`, ROOT, ...args],
+      { stdio: 'ignore', env: { ...process.env, ELECTRON_RENDERER_URL: '' } },
+    );
+    const app = new App(child, port, profile);
     const target = await waitFor('the UI to load', async () => {
       const targets = await app.targets();
       return targets.find((t) => t.url.includes('renderer/index.html'));
@@ -252,6 +259,7 @@ export class App {
     this.ui?.close();
     this.process.kill();
     await new Promise((resolve) => this.process.once('exit', resolve));
+    rmSync(this.profile, { recursive: true, force: true });
   }
 }
 
