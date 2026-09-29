@@ -38,6 +38,19 @@ describe('actionFor on Windows and Linux', () => {
       expect(at(key('I', { control: true, shift: true }))).toBe('devtools');
     });
 
+    it(`${platform}: find and zoom`, () => {
+      expect(at(key('f', { control: true }))).toBe('find');
+      expect(at(key('F3'))).toBe('find-next');
+      expect(at(key('F3', { shift: true }))).toBe('find-previous');
+      expect(at(key('g', { control: true }))).toBe('find-next');
+      expect(at(key('G', { control: true, shift: true }))).toBe('find-previous');
+      expect(at(key('=', { control: true }))).toBe('zoom-in');
+      expect(at(key('+', { control: true, shift: true }))).toBe('zoom-in');
+      expect(at(key('+', { control: true }))).toBe('zoom-in'); // numeric keypad
+      expect(at(key('-', { control: true }))).toBe('zoom-out');
+      expect(at(key('0', { control: true }))).toBe('zoom-reset');
+    });
+
     it(`${platform}: ignores Cmd-style and unrelated keys`, () => {
       expect(at(key('l', { meta: true }))).toBeNull();
       expect(at(key('l', { control: true, meta: true }))).toBeNull();
@@ -71,6 +84,16 @@ describe('actionFor on macOS', () => {
     expect(at(key('ArrowRight', { meta: true, alt: true }))).toBe('next-tab');
     expect(at(key('ArrowLeft', { meta: true, alt: true }))).toBe('previous-tab');
     expect(at(key('3', { meta: true }))).toBe('tab-3');
+  });
+
+  it('find and zoom', () => {
+    expect(at(key('f', { meta: true }))).toBe('find');
+    expect(at(key('g', { meta: true }))).toBe('find-next');
+    expect(at(key('g', { meta: true, shift: true }))).toBe('find-previous');
+    expect(at(key('=', { meta: true }))).toBe('zoom-in');
+    expect(at(key('-', { meta: true }))).toBe('zoom-out');
+    expect(at(key('0', { meta: true }))).toBe('zoom-reset');
+    expect(at(key('F3'))).toBeNull();
   });
 
   it('DevTools', () => {

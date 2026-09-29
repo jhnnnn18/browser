@@ -18,10 +18,24 @@ export const Channels = {
   activateTab: 'tabs:activate',
   moveTab: 'tabs:move',
   toggleMute: 'tabs:toggle-mute',
+  tabMenu: 'tabs:menu',
+  // renderer -> main: find and zoom (active tab)
+  find: 'find:query',
+  stopFind: 'find:stop',
+  resetZoom: 'zoom:reset',
   // main -> renderer
   state: 'window:state',
   focusAddress: 'ui:focus-address',
+  focusFind: 'ui:focus-find',
 } as const;
+
+/** Find in page, while the find bar is open for a tab. */
+export interface FindState {
+  query: string;
+  /** Which match is highlighted (1-based), 0 if none. */
+  active: number;
+  total: number;
+}
 
 /** What the UI needs to know about one tab. */
 export interface TabState {
@@ -38,6 +52,10 @@ export interface TabState {
   canGoForward: boolean;
   /** Which container the tab belongs to. Only "default" exists for now. */
   container: string;
+  /** Zoom factor: 1 is 100%. Shared by all tabs on the same site. */
+  zoom: number;
+  /** Null when the find bar isn't open for this tab. */
+  find: FindState | null;
 }
 
 /**
@@ -64,7 +82,17 @@ export interface BrowserApi {
   activateTab(id: number): void;
   moveTab(id: number, toIndex: number): void;
   toggleMute(id: number): void;
+  /** Show the right-click menu for a tab. */
+  tabMenu(id: number): void;
+  /**
+   * Search the active tab. With `next`, move to the next (or, with
+   * `forward: false`, previous) match of the same text.
+   */
+  find(text: string, options: { forward: boolean; next: boolean }): void;
+  stopFind(): void;
+  resetZoom(): void;
   /** Subscribe to window state changes. Returns an unsubscribe function. */
   onState(listener: (state: WindowState) => void): () => void;
   onFocusAddress(listener: () => void): () => void;
+  onFocusFind(listener: () => void): () => void;
 }

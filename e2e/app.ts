@@ -116,6 +116,7 @@ export async function startSite(): Promise<{ url: string; server: Server }> {
         addEventListener('message', (e) => { document.title = 'Got ' + e.data; });
       </script>`,
     '/popup': `<title>Popup</title><script>window.opener.postMessage('hello', '*');</script>`,
+    '/words': '<title>Words</title><p>apple banana apple cherry apple</p>',
     // Plays a quiet tone so the tab counts as "playing sound".
     '/sound': `<title>Sound</title><script>
         const ctx = new AudioContext();
@@ -244,6 +245,34 @@ export class App {
     await sleep(150);
   }
 
+  /** Scroll the mouse wheel over a point while holding a key, e.g. ctrl. */
+  async wheel([x, y]: [number, number], direction: 'up' | 'down', holding?: string) {
+    xdotool('mousemove', String(x), String(y));
+    if (holding) xdotool('keydown', holding);
+    xdotool('click', direction === 'up' ? '4' : '5');
+    if (holding) xdotool('keyup', holding);
+    await sleep(200);
+  }
+
+  /**
+   * Right-click a point, then click a menu item: `row` counts items from the
+   * top (starting at 0), `separatorsAbove` how many separators come before it.
+   */
+  async menu(point: [number, number], row: number, separatorsAbove = 0) {
+    const before = visibleWindows();
+    await this.click(point, 3);
+    // The native menu is its own window; ask X where it opened.
+    const menu = await waitFor('the menu to open', () => visibleWindows().find((w) => !before.includes(w)));
+    const geometry = xdotoolOutput('getwindowgeometry', '--shell', menu);
+    const left = Number(/X=(\d+)/.exec(geometry)![1]);
+    const top = Number(/Y=(\d+)/.exec(geometry)![1]);
+    // Chromium's Linux menus: 3px padding, 29px items, 19px separators.
+    // (Its menus ignore keys sent to them without a window manager, so the
+    // item is clicked instead of chosen with the arrow keys.)
+    const y = top + 3 + row * 29 + separatorsAbove * 19 + 14;
+    await this.click([left + 40, y]);
+  }
+
   async drag(from: [number, number], to: [number, number]) {
     xdotool('mousemove', String(from[0]), String(from[1]), 'mousedown', '1');
     for (let step = 1; step <= 5; step++) {
@@ -265,6 +294,10 @@ export class App {
 
 function xdotool(...args: string[]) {
   execFileSync('xdotool', args);
+}
+
+function visibleWindows(): string[] {
+  return xdotoolOutput('search', '--onlyvisible', '--name', '').split('\n').filter(Boolean);
 }
 
 /** Run xdotool and return what it printed ('' if it found nothing). */

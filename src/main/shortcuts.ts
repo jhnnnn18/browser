@@ -17,6 +17,12 @@ export type Action =
   | 'next-tab'
   | 'previous-tab'
   | 'devtools'
+  | 'find'
+  | 'find-next'
+  | 'find-previous'
+  | 'zoom-in'
+  | 'zoom-out'
+  | 'zoom-reset'
   | `tab-${Digit}`;
 
 /** The subset of Electron's `Input` we care about. */
@@ -50,6 +56,15 @@ const COMMON: Binding[] = [
   { action: 'close-tab', keys: ['w'], mod: true },
   { action: 'reopen-tab', keys: ['t'], mod: true, shift: true },
   { action: 'devtools', keys: ['F12'] },
+  { action: 'find', keys: ['f'], mod: true },
+  { action: 'find-next', keys: ['g'], mod: true },
+  { action: 'find-previous', keys: ['g'], mod: true, shift: true },
+  // "=" is where "+" is on most keyboards; with Shift it reports "+".
+  { action: 'zoom-in', keys: ['=', '+'], mod: true },
+  { action: 'zoom-in', keys: ['+', '='], mod: true, shift: true },
+  { action: 'zoom-out', keys: ['-'], mod: true },
+  { action: 'zoom-out', keys: ['_', '-'], mod: true, shift: true },
+  { action: 'zoom-reset', keys: ['0'], mod: true },
   ...([1, 2, 3, 4, 5, 6, 7, 8, 9] as const).map(
     (n): Binding => ({ action: `tab-${n}`, keys: [String(n)], mod: true }),
   ),
@@ -66,6 +81,8 @@ const WINDOWS_LINUX: Binding[] = [
   { action: 'previous-tab', keys: ['Tab'], mod: true, shift: true },
   { action: 'previous-tab', keys: ['PageUp'], mod: true },
   { action: 'devtools', keys: ['i'], mod: true, shift: true },
+  { action: 'find-next', keys: ['F3'] },
+  { action: 'find-previous', keys: ['F3'], shift: true },
 ];
 
 const MAC: Binding[] = [

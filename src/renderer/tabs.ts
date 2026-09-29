@@ -8,6 +8,7 @@ export interface TabStripActions {
   close(id: number): void;
   move(id: number, toIndex: number): void;
   toggleMute(id: number): void;
+  menu(id: number): void;
 }
 
 const ICONS = {
@@ -69,6 +70,11 @@ export function createTabStrip(container: HTMLElement, actions: TabStripActions)
     });
     root.addEventListener('auxclick', (event) => {
       if (event.button === 1) actions.close(id);
+    });
+
+    root.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      actions.menu(id);
     });
 
     root.addEventListener('pointerdown', (event) => {

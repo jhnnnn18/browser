@@ -9,7 +9,7 @@ import {
   type WebContentsViewConstructorOptions,
   type WindowOpenHandlerResponse,
 } from 'electron';
-import type { TabState } from '../shared/ipc';
+import type { FindState, TabState } from '../shared/ipc';
 
 export interface TabOptions {
   id: number;
@@ -37,6 +37,9 @@ export class Tab {
   readonly view: WebContentsView;
   private readonly onChange: () => void;
   private favicon: string | null = null;
+  private find: FindState | null = null;
+  /** The last search, offered again when the find bar reopens. */
+  private lastQuery = '';
   /** False until the tab has been asked to show something. */
   private started: boolean;
 
@@ -63,11 +66,18 @@ export class Tab {
       changed();
     });
     contents.on('did-start-navigation', (details) => {
-      // A new document in the main frame: its icon hasn't been reported yet.
+      // A new document in the main frame: its icon hasn't been reported yet,
+      // and any find results belong to the old page.
       if (details.isMainFrame && !details.isSameDocument) {
         this.favicon = null;
+        this.closeFind();
         changed();
       }
+    });
+    contents.on('found-in-page', (_event, result) => {
+      if (!this.find) return;
+      this.find = { ...this.find, active: result.activeMatchOrdinal, total: result.matches };
+      changed();
     });
     contents.on('enter-html-full-screen', () => options.onFullscreen(this, true));
     contents.on('leave-html-full-screen', () => options.onFullscreen(this, false));
@@ -97,6 +107,38 @@ export class Tab {
     this.onChange();
   }
 
+  get finding(): boolean {
+    return this.find !== null;
+  }
+
+  /** Open the find bar (keeping the last search), if there's a page to search. */
+  openFind() {
+    if (!this.started || this.find) return;
+    this.find = { query: this.lastQuery, active: 0, total: 0 };
+    if (this.lastQuery) this.findText(this.lastQuery, { forward: true, next: false });
+    this.onChange();
+  }
+
+  /** Search for `query`; with `next`, move to the next/previous match. */
+  findText(query: string, { forward, next }: { forward: boolean; next: boolean }) {
+    if (!this.started) return;
+    // Same text as before: keep the current count until the new results arrive.
+    if (this.find?.query !== query) this.find = { query, active: 0, total: 0 };
+    this.lastQuery = query;
+    // Careful: Electron's `findNext: true` means "start a new search", the
+    // opposite of what the name suggests. A follow-up search is `false`.
+    if (query) this.contents.findInPage(query, { forward, findNext: !next });
+    else this.contents.stopFindInPage('clearSelection');
+    this.onChange();
+  }
+
+  closeFind() {
+    if (!this.find) return;
+    this.find = null;
+    if (!this.contents.isDestroyed()) this.contents.stopFindInPage('keepSelection');
+    this.onChange();
+  }
+
   state(): TabState {
     const contents = this.contents;
     return {
@@ -110,6 +152,8 @@ export class Tab {
       canGoBack: contents.navigationHistory.canGoBack(),
       canGoForward: contents.navigationHistory.canGoForward(),
       container: this.container,
+      zoom: contents.getZoomFactor(),
+      find: this.find,
     };
   }
 
