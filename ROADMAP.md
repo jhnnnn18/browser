@@ -8,8 +8,7 @@ end-to-end tests and CI.
 
 **What it's for:** everyday browsing that's private by default (VPN, no
 tracking, private windows), free of ads, and customizable (themes, colours,
-fonts). The only sign-ins it needs to support are Google and Outlook, plus a
-Claude side panel.
+fonts). The only sign-ins it needs to support are Google and Outlook.
 
 ## Phase 1: Foundation
 
@@ -42,7 +41,7 @@ Claude side panel.
 - [ ] **4. Google and Outlook sign-in check.** Google often refuses sign-in
   from Electron-based browsers ("This browser or app may not be secure"),
   usually because the browser identifies itself as Electron. Check both
-  sign-ins early (and signing in to claude.ai with Google, for step 12a);
+  sign-ins early;
   present a standard Chrome identification if needed.
 - [ ] **5. Storage, history, suggestions:** settings and history storage,
   address-field suggestions (including "switch to open tab"), suggestions
@@ -94,49 +93,24 @@ license.
 - [ ] **11. Element hiding and reading mode.** Pick an element and hide it on
   that site for good. Reading mode shows the article in its own sandboxed
   view with our own template, using the theme's fonts and colours.
-- [ ] **12a. Claude side panel (claude.ai)**
-  - A panel beside the page showing the claude.ai website. You sign in
-    there with your own Claude account as usual, using your existing plan;
-    no API key and no API billing. The browser never sees your password.
-  - The panel is web content like any tab: sandboxed, through the VPN, and
-    stays signed in between restarts (except in private windows).
-  - A "Copy page for Claude" button puts the current page's article text
-    on the clipboard (the same extraction as reading mode) to paste into
-    the chat. Nothing is sent anywhere automatically.
-  - Claude never acts on pages: no clicking, typing or navigating.
-  - Toggle with a toolbar button and a shortcut; the page narrows to make
-    room (the layout function gains a side-panel area).
-- [ ] **12b. "Ask about this page" with your own API key (optional mode)**
-  - For people who want answers about the page without copying: paste an
-    API key from your own Claude Console account once (billed pay-as-you-go
-    by Anthropic, separately from any Claude.ai plan); it's stored encrypted
-    with the OS keychain and only the main process uses it.
-  - Our own chat UI in the panel, streaming answers. The page's article text
-    is included only when you ask about the page, and the panel shows what
-    was sent. Follow-up questions reuse the page through prompt caching.
-  - Anthropic's API has no "Sign in with Claude" for third-party desktop
-    apps (its options are API keys, Workload Identity Federation for
-    servers, and App Attest for iOS/macOS apps billed to the developer), so
-    a personal key is how this mode uses your own account.
-- Other AI providers: maybe later.
-- [ ] **13. Tab layouts and split view:** vertical, collapsible and pinned
+- [ ] **12. Tab layouts and split view:** vertical, collapsible and pinned
   tabs; two tabs side by side.
 
 ## Phase 5: Maybe later (planned, to be decided)
 
-- [ ] **14. Passwords** (`safeStorage`), or recommend a password-manager
+- [ ] **13. Passwords** (`safeStorage`), or recommend a password-manager
   extension instead.
-- [ ] **15. Chrome extensions** via `electron-chrome-extensions`. Partial
+- [ ] **14. Chrome extensions** via `electron-chrome-extensions`. Partial
   support; built-in ad blocking (step 7) and built-in themes (step 10) don't
   depend on it.
 
 ## Phase 6: Shipping → Milestone C (1.0)
 
-- [ ] **16. Installers:** Windows (NSIS), Linux (AppImage/RPM), macOS (DMG),
+- [ ] **15. Installers:** Windows (NSIS), Linux (AppImage/RPM), macOS (DMG),
   built in CI. The WireGuard helper is bundled for each platform.
-- [ ] **17. Code signing:** Windows (Azure Trusted Signing), macOS (Apple
+- [ ] **16. Code signing:** Windows (Azure Trusted Signing), macOS (Apple
   Developer ID).
-- [ ] **18. Auto-update** (`electron-updater` + GitHub Releases). Electron
+- [ ] **17. Auto-update** (`electron-updater` + GitHub Releases). Electron
   releases carry Chromium security fixes, so staying current matters.
 
 ## Decided against
@@ -147,12 +121,11 @@ license.
   Electron doesn't support. Step 8 covers the same need.
 - **uBlock Origin Lite:** needs `declarativeNetRequest`, which Electron
   doesn't support.
-- **Claude acting on pages:** the side panel only reads and answers.
+- **AI side panel (Claude or others):** doesn't fit a minimalist browser.
 
 ## Ideas for later
 
 Commands in the address field (`> mute`), custom search keywords, HTTPS-only
 mode, hiding cookie banners, clearing data on exit, per-site settings,
 forced dark mode, custom CSS per site, bookmarks/reading list, importing from
-Chrome/Firefox, keyboard link hints, full-page screenshots, other AI
-providers in the side panel.
+Chrome/Firefox, keyboard link hints, full-page screenshots.
